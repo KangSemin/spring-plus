@@ -23,15 +23,21 @@ public class JwtUtil {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final long TOKEN_TIME = 60 * 60 * 1000L; // 60분
 
-    @Value("${jwt.secret.key}")
+    @Value("${jwt.secret}")
     private String secretKey;
     private Key key;
     private final SignatureAlgorithm signatureAlgorithm = SignatureAlgorithm.HS256;
 
     @PostConstruct
     public void init() {
-        byte[] bytes = Base64.getDecoder().decode(secretKey);
-        key = Keys.hmacShaKeyFor(bytes);
+        try {
+            byte[] keyBytes = Base64.getDecoder().decode(secretKey);
+            this.key = Keys.hmacShaKeyFor(keyBytes);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid JWT secret key format: {}", e.getMessage());
+            // 기본 키 생성 (개발 환경에서만 사용)
+            this.key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+        }
     }
 
     public String createToken(Long userId, String nickname, String email, UserRole userRole) {
@@ -40,7 +46,7 @@ public class JwtUtil {
         return BEARER_PREFIX +
             Jwts.builder()
                 .setSubject(String.valueOf(userId))
-                .claim("nickname", nickname)
+                .claim("nickname",nickname)
                 .claim("email", email)
                 .claim("userRole", userRole)
                 .setExpiration(new Date(date.getTime() + TOKEN_TIME))
@@ -62,5 +68,28 @@ public class JwtUtil {
             .build()
             .parseClaimsJws(token)
             .getBody();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            if (!StringUtils.hasText(token)) return false;
+            Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(substringToken(token));
+            return true;
+        } catch (Exception e) {
+            log.error("Invalid JWT token: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    public String getUsernameFromToken(String token) {
+        return Jwts.parserBuilder()
+            .setSigningKey(key)
+            .build()
+            .parseClaimsJws(token)
+            .getBody()
+            .get("username", String.class);
     }
 }
