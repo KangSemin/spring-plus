@@ -5,12 +5,10 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.example.expert.domain.todo.entity.QTodo;
 import org.example.expert.domain.todo.entity.Todo;
-import org.springframework.stereotype.Service;
 
 
-@Service
 @RequiredArgsConstructor
-public class TodoRepositoryCustomImpl implements TodoRepositoryCustom {
+public class TodoRepositoryImpl implements TodoRepositoryCustom {
 
     private final JPAQueryFactory queryFactory;
 
